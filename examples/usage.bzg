@@ -1,0 +1,67 @@
+include("lib/proxy.bzg");
+
+// 1. Initialize Reverse Proxy Engine listening on port 443
+var proxy = createReverseProxy(80);
+
+print("Initializing Bonezegei Reverse Proxy Engine...");
+
+proxy.setLogDir("logs");
+
+// ============================================================================
+// ROUTING & LOAD BALANCING
+// ============================================================================
+
+// Domain 1: Standard API Cluster with Load Balancing across 3 upstream nodes
+// proxy.addDomain("localhost");
+proxy.addUpstream("localhost", "127.0.0.1", 8000, 1); // Node 1
+proxy.addUpstream("api.localhost", "127.0.0.1", 8001, 1); // Node 2
+
+
+// ============================================================================
+// SECURITY & WAF THREAT DETECTORS
+// ============================================================================
+
+// Enable / Disable built-in signature inspection modules (1 = On, 0 = Off)
+proxy.setDetector("sqli", 1);           // SQL Injection (<script>, UNION SELECT, etc.)
+proxy.setDetector("xss", 1);            // Cross-Site Scripting
+proxy.setDetector("bot", 0);            // Malicious Scrapers & Attack Scanners (Nikto, SQLmap, etc.)
+proxy.setDetector("path_traversal", 1); // Directory Traversal (../, /etc/passwd)
+proxy.setDetector("lfi", 0);            // Local File Inclusion (php://filter, file://)
+proxy.setDetector("rfi", 0);            // Remote File Inclusion (=http://)
+
+// Add Custom WAF Signature Rules: (pattern, target_field, action [1=Block, 0=Log])
+proxy.addWafRule("exec(",   "body", 1);
+proxy.addWafRule("cmd.exe", "url", 1);
+proxy.addWafRule("eval(",   "body", 1);
+proxy.addWafRule("pwd", "URL", 1);      
+
+// ============================================================================
+// TRAFFIC CONTROL & RATE LIMITING
+// ============================================================================
+// Rate Limiting (DDoS Protection): Allow max 50 requests per 10 seconds per client IP
+proxy.setRateLimit(50, 10);
+
+
+// ============================================================================
+// SSL / TLS TERMINATION (Optional)
+// ============================================================================
+// Uncomment to enable HTTPS termination
+// proxy.toggleSSL(1, "cert.pem", "key.pem");
+
+// ============================================================================
+// SYSTEM DIAGNOSTICS & RUN ENGINE
+// ============================================================================
+
+// Retrieve and print initial status JSON
+print("\n--- PROXY ENGINE CONFIGURATION STATUS ---");
+print(proxy.getStatus());
+
+// Retrieve registered upstream nodes and real-time monitoring structure
+print("\n--- REGISTERED ACTIVE NODES ---");
+print(proxy.getNodes());
+print("------------------------------------------\n");
+
+print("Proxy is live! Listening for incoming connections on port 443...");
+
+// Start the multi-threaded reverse proxy blocking loop
+proxy.run();
