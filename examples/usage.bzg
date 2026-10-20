@@ -3,6 +3,14 @@ include("lib/proxy.bzg");
 // 1. Initialize Reverse Proxy Engine listening on port 443
 var proxy = createReverseProxy(80);
 
+/*
+proxy.setMaxPayload(10485760); // 10 MiB
+var proxy = createReverseProxy(8080, 1024);
+// The configured upper bound is 65,536:
+var highCapacityProxy = createReverseProxy(8080, 65536);
+// Third argument: 1 = thread-per-connection, 0 = event-driven:
+var eventProxy = createReverseProxy(8080, 1024, false);
+*/
 print("Initializing Bonezegei Reverse Proxy Engine...");
 
 proxy.setLogDir("logs");
